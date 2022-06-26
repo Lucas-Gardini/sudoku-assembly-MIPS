@@ -17,7 +17,7 @@ main:
 	li	$a1, 1
 	syscall
 
-	li	$t9, 4 # índice da primeira casa vazia
+	li	$t9, 0 # iniciando índice de espaço vazio
 	li	$t3, 0 # 0 = não substituir, 1 = substituir
 	li	$t4, 0 # contador do manuseador de entradas
 	jal	manusearEntradas	
@@ -25,6 +25,9 @@ main:
 	j	exit
 
 manusearEntradas:
+	la	$t5, tabuleiro
+	jal	proxCasaVazia
+
 	li	$v0, 0
 	la	$t1, tabuleiro
 
@@ -61,18 +64,24 @@ manusearEntradas:
 		j	fimManusear
 	
 	fimManusear:
-		bge     $t4, 2, exit 
-		add 	$t9, $t9, 1
-		#bge 	$t0, 0, exit
+		bge     $t4, 36, exit 
+		
+		mul 	$t9, $t9, 4 # multiplicando o íncide por 4 (array anda de 4 em 4 bytes)
+		#sub	$t9, $t9, 4 # voltando uma posição na memória
+		add 	$s0, $zero, $a0 # adicionando o valor inserido pelo usuário ao s0
+		sw      $s0, tabuleiro($t9) # adicionando o endereço ao array na posição $t8 ($t9 * 4)
+		
+		#add 	$t9, $t9, 1
+		li	$t9, 0
 		
 		move 	$t5, $a0
 		
 		j 	manusearEntradas
 
 proxCasaVazia:
-	bge 	$t9, 32, fimDeJogo
+	bge 	$t9, 36, fimDeJogo
 
-	add	$t9, $t8, 1
+	add	$t9, $t9, 1
 	lw      $t6, 0($t5)
     	addi    $t5, $t5, 4
     	
@@ -81,6 +90,8 @@ proxCasaVazia:
     	j	proxCasaVazia
     	
     	achouCasaVazia:
+    		#li	$t9, 4
+    		sub	$t9, $t9, 1
     		jr	$ra	
 
 imprimirTabuleiro:	
@@ -91,23 +102,23 @@ imprimirTabuleiro:
 	j	continuar
 
 	substituirValor:
-		bne	$t9, $t0, continuar # se o índice de substituição não for igual o índice desse momento, não fazer nada
-		move 	$t8, $t9
-		mul 	$t8, $t8, 4 # multiplicando o íncide por 4 (array anda de 4 em 4 bytes)
-		sub	$t8, $t8, 4 # voltando uma posição na memória
-		add 	$s0, $zero, $t5 # adicionando o valor inserido pelo usuário ao s0
-		sw      $s0, tabuleiro($t8) # adicionando o endereço ao array na posição $t8 ($t9 * 4)
+		#bne	$t9, $t0, continuar # se o índice de substituição não for igual o índice desse momento, não fazer nada
+		#move 	$t8, $t9
+		#mul 	$t8, $t8, 4 # multiplicando o íncide por 4 (array anda de 4 em 4 bytes)
+		#sub	$t8, $t8, 4 # voltando uma posição na memória
+		#add 	$s0, $zero, $t5 # adicionando o valor inserido pelo usuário ao s0
+		#sw      $s0, tabuleiro($t8) # adicionando o endereço ao array na posição $t8 ($t9 * 4)
 	
-		li	$v0, 0
-		la	$t5, tabuleiro
-		la	$t1, tabuleiro
-		li	$t8, 0
+		#li	$v0, 0
+		#la	$t5, tabuleiro
+		#la	$t1, tabuleiro
+		#li	$t8, 0
 		
-		sw	$ra, ($gp)
+		#sw	$ra, ($gp)
 		
-		jal	proxCasaVazia
+		#jal	proxCasaVazia
 		
-		lw	$ra, ($gp)
+		#lw	$ra, ($gp)
 	
 	continuar:
     		# carregando palavra do endereço do array e incrementando para o próximo
@@ -204,8 +215,16 @@ imprimirTabuleiro:
 
 
 fimDeJogo:
-	j exit
+	li	$v0, 0
+	la	$t1, tabuleiro
+
+    	li      $v0, 4
+    	la      $a0, separador_vertical
+    	syscall
+
+	jal 	imprimirTabuleiro
+	j 	exit
 
 exit:
-	li $v0, 10 # Definindo fim do programa
+	li 	$v0, 10 # Definindo fim do programa
 	syscall
