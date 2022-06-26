@@ -1,4 +1,5 @@
 # sudoku-assembly-MIPS
-## Status: CANCELADO
 
-Projeto incompleto, não deu 🙅
+## Status: EM PROGRESSO
+
+Projeto incompleto
