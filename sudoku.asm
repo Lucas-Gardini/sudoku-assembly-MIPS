@@ -12,8 +12,8 @@ mensagemErro:		.asciiz "Erro ao processar o numero digitado, verifique o que voc
 .globl main
 
 main: 
-	li	$v0, 55
-	la	$a0, bemVindo
+	li	$v0, 55 # syscall de diálogo (tela popup)
+	la	$a0, bemVindo # mensagem que será exibida
 	li	$a1, 1
 	syscall
 
@@ -38,10 +38,11 @@ manusearEntradas:
 
 	jal 	imprimirTabuleiro
 	
-	li	$v0, 51
+	li	$v0, 51 # syscall de diálogo de entrada (prompt popup)
 	la	$a0, mensagemEntrada
 	syscall
 	
+	# Verificando status retornado pelo prompt
 	beq	$a1, 0, valorOk
 	beq	$a1, -1, erroAoParsearInt # erro do compilador ou foi digitado algo que não era esperado
 	beq	$a1, -2, usuarioCancelou # usuário clicou em cancelar, indo para a proxima casa
@@ -55,8 +56,8 @@ manusearEntradas:
 		j	manusearEntradas
 	
 	valorOk:
-		add	$t4, $t4, 1
-		li	$t3, 1
+		add	$t4, $t4, 1 # Mais um ao contador
+		li	$t3, 1 # Identificador de substituição
 		j	fimManusear
 	
 	usuarioCancelou:
@@ -64,7 +65,7 @@ manusearEntradas:
 		j	fimManusear
 	
 	fimManusear:
-		bge     $t4, 36, exit 
+		bge     $t4, 36, exit # Contador maior que 36, fim
 		
 		mul 	$t9, $t9, 4 # multiplicando o íncide por 4 (array anda de 4 em 4 bytes)
 		#sub	$t9, $t9, 4 # voltando uma posição na memória
@@ -72,20 +73,20 @@ manusearEntradas:
 		sw      $s0, tabuleiro($t9) # adicionando o endereço ao array na posição $t8 ($t9 * 4)
 		
 		#add 	$t9, $t9, 1
-		li	$t9, 0
+		li	$t9, 0 # Resetando posição da array para futuras inserções
 		
 		move 	$t5, $a0
 		
-		j 	manusearEntradas
+		j 	manusearEntradas # Loop
 
 proxCasaVazia:
-	bge 	$t9, 36, fimDeJogo
+	bge 	$t9, 36, fimDeJogo # Contador maior que 36, fim
 
 	add	$t9, $t9, 1
 	lw      $t6, 0($t5)
-    	addi    $t5, $t5, 4
+    	addi    $t5, $t5, 4 # Array/memória anda de 4 em 4 bytes
     	
-    	beq	$t6, 0, achouCasaVazia
+    	beq	$t6, 0, achouCasaVazia # Encontrou 0 no array
     	
     	j	proxCasaVazia
     	
