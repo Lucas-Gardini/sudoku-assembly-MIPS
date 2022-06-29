@@ -1,12 +1,19 @@
-.data
-bemVindo:     		.asciiz "Bem vindo ao jogo de sudoku!"
-tabuleiro:		.word	1, 3, 8, 5, 0, 2, 0, 0, 0, 0, 0, 0, 6, 0, 0, 8, 7, 1, 2, 0, 0, 6, 0, 0, 0, 0, 7, 0, 4, 3, 0, 0, 3, 0, 8, 7
-separador:		.asciiz " | "
-separador_horizontal:	.asciiz "- - - + - - -\n"
-separador_vertical:	.asciiz "\n\n\n"
-mensagemEntrada:	.asciiz "Digite um número para colocar na posição do 'X' ou selecione cancelar para ir para a próxima casa"
-mensagemErro:		.asciiz "Erro ao processar o numero digitado, verifique o que você digitou"
+# Sudoku 2x2
+# Feito por:
+# Lucas Gardini Dias
+# Gabriel Luiz de Oliveira
+# Thiago Aio
 
+.data
+bemVindo:     		.asciiz "Bem vindo ao jogo de sudoku!\n\nDigite somente números de 1 a 4 para completar as lacunas!\n\nAlém disso o número digitado não pode ser igual a qualquer outro número de sua linha ou coluna!\n"
+tabuleiro:		.word	0, 1, 4, 3, 3, 0, 2, 1, 1, 2, 0, 4, 4, 3, 1, 0
+separador:		.asciiz " | "
+separador_horizontal:	.asciiz "- - - - - \n"
+separador_vertical:	.asciiz "\n\n\n"
+mensagemEntrada:	.asciiz "Digite um número para colocar na posição do 'X'"
+mensagemErro:		.asciiz "Erro ao processar o numero digitado, verifique o que você digitou"
+mensagemDerrota: 	.asciiz "Você perdeu!"
+mensagemVitoria:	.asciiz "Parabens! Você ganhou!"
 
 .text
 .globl main
@@ -18,14 +25,14 @@ main:
 	syscall
 
 	li	$t9, 0 # iniciando índice de espaço vazio
-	li	$t3, 0 # 0 = não substituir, 1 = substituir
+	li	$t3, 0 # 0 = não substituir, 1 = substituir (flags internas)
 	li	$t4, 0 # contador do manuseador de entradas
 	jal	manusearEntradas	
 	
 	j	exit
 
 manusearEntradas:
-	la	$t5, tabuleiro
+	la	$t5, tabuleiro # carregando tabuleiro para uso do block abaixo
 	jal	proxCasaVazia
 
 	li	$v0, 0
@@ -40,15 +47,19 @@ manusearEntradas:
 	
 	li	$v0, 51 # syscall de diálogo de entrada (prompt popup)
 	la	$a0, mensagemEntrada
-	syscall
+	syscall 
+	
+	bgt 	$a0, 4, exit #Se $a0 maior que 4 = erro
+	blt 	$a0, 1, exit #Se $a0 menor que 1 = erro
 	
 	# Verificando status retornado pelo prompt
 	beq	$a1, 0, valorOk
 	beq	$a1, -1, erroAoParsearInt # erro do compilador ou foi digitado algo que não era esperado
-	beq	$a1, -2, usuarioCancelou # usuário clicou em cancelar, indo para a proxima casa
-	beq	$a1, -3, usuarioCancelou # usuário clicou em ok, mas não digitou nada, indo para a proxima ca
-	
+	beq	$a1, -2, usuarioCancelou # usuário clicou em cancelar
+	beq	$a1, -3, usuarioCancelou # usuário clicou em ok, mas não digitou nada
+
 	erroAoParsearInt:
+		# popup de erro
 		li	$v0, 55
 		la	$a0, mensagemErro
 		li	$a1, 0
@@ -57,22 +68,24 @@ manusearEntradas:
 	
 	valorOk:
 		add	$t4, $t4, 1 # Mais um ao contador
-		li	$t3, 1 # Identificador de substituição
+		li	$t3, 1 # Identificador de substituição (flag interna)
 		j	fimManusear
 	
 	usuarioCancelou:
-		li	$t3, 0
+		li	$t3, 0 # Identificador de cancelamento (flag interna)
 		j	fimManusear
 	
 	fimManusear:
-		bge     $t4, 36, exit # Contador maior que 36, fim
-		
-		mul 	$t9, $t9, 4 # multiplicando o íncide por 4 (array anda de 4 em 4 bytes)
-		#sub	$t9, $t9, 4 # voltando uma posição na memória
+		bge     $t4, 5, fimDeJogo # Contador maior que 4, fim
+		beq 	$t4, 1, verificaNum
+		beq 	$t4, 2, verificaNum2
+		beq	$t4, 3, verificaNum3
+		beq	$t4, 4, verificaNum4
+
+	continue:
+		mul 	$t9, $t9, 4 # multiplicando o íncide por 4 (array/memória anda de 4 em 4 bytes)
 		add 	$s0, $zero, $a0 # adicionando o valor inserido pelo usuário ao s0
 		sw      $s0, tabuleiro($t9) # adicionando o endereço ao array na posição $t8 ($t9 * 4)
-		
-		#add 	$t9, $t9, 1
 		li	$t9, 0 # Resetando posição da array para futuras inserções
 		
 		move 	$t5, $a0
@@ -80,53 +93,31 @@ manusearEntradas:
 		j 	manusearEntradas # Loop
 
 proxCasaVazia:
-	bge 	$t9, 36, fimDeJogo # Contador maior que 36, fim
+	bge 	$t9, 16, fimDeJogo # Contador maior que 16, fim
 
+	# lendo o valor na posição correspondente no $t5 
+	# (carregado anteriormente com o endereço da array de tabuleiro)
 	add	$t9, $t9, 1
-	lw      $t6, 0($t5)
+	lw      $t6, 0($t5) 
     	addi    $t5, $t5, 4 # Array/memória anda de 4 em 4 bytes
     	
-    	beq	$t6, 0, achouCasaVazia # Encontrou 0 no array
+    	beq	$t6, 0, achouCasaVazia # Encontrou 0 no array (0 = casa vazia)
     	
-    	j	proxCasaVazia
+    	j	proxCasaVazia # Loop
     	
     	achouCasaVazia:
-    		#li	$t9, 4
     		sub	$t9, $t9, 1
     		jr	$ra	
 
 imprimirTabuleiro:	
-	# caso o contador ultrapasse 36, saimos da função
-	bge     $t0, 36, sair
+	# caso o contador ultrapasse 16, saimos da função
+	bge     $t0, 16, sair
 
-	bne	$t3, 0, substituirValor # se $t3 não for zero, quer dizer que o usuário vai substituir algum valor
-	j	continuar
+    	# carregando palavra do endereço do array e incrementando para o próximo
+    	lw      $t2, 0($t1)
+    	addi    $t1, $t1, 4
 
-	substituirValor:
-		#bne	$t9, $t0, continuar # se o índice de substituição não for igual o índice desse momento, não fazer nada
-		#move 	$t8, $t9
-		#mul 	$t8, $t8, 4 # multiplicando o íncide por 4 (array anda de 4 em 4 bytes)
-		#sub	$t8, $t8, 4 # voltando uma posição na memória
-		#add 	$s0, $zero, $t5 # adicionando o valor inserido pelo usuário ao s0
-		#sw      $s0, tabuleiro($t8) # adicionando o endereço ao array na posição $t8 ($t9 * 4)
-	
-		#li	$v0, 0
-		#la	$t5, tabuleiro
-		#la	$t1, tabuleiro
-		#li	$t8, 0
-		
-		#sw	$ra, ($gp)
-		
-		#jal	proxCasaVazia
-		
-		#lw	$ra, ($gp)
-	
-	continuar:
-    		# carregando palavra do endereço do array e incrementando para o próximo
-    		lw      $t2, 0($t1)
-    		addi    $t1, $t1, 4
-
-	beq	$t0, 18, imprimirSeparadorHorizontal # caso o contador seja 18, imprimimos uma divisão
+	beq	$t0, 8, imprimirSeparadorHorizontal # caso o contador seja 8, imprimimos um 'pipe' -> |
 	beq	$t0, $t9, imprimirX # imprime um "X" na casa selecionada pra inserção de número
 	beq 	$t2, 0,	imprimirNumeroVazio # imprimir espaço onde não existe número
 	
@@ -152,20 +143,16 @@ imprimirTabuleiro:
     		syscall
     		j	imprimirNumeros
     	
-    	# Lógica de impressão dos números (casas, divisões, separadores)
+    	# Lógica de impressão dos números (casas, separadores)
     	imprimirNumeros:
-    		beq	$t0, 2, imprimirSeparador # fim do bloco
-    		beq	$t0, 5, imprimirNovaLinha # fim da linha
-    		beq	$t0, 8, imprimirSeparador
+    		beq	$t0, 1, imprimirSeparador # fim do bloco
+    		beq	$t0, 3, imprimirNovaLinha # fim da linha
+    		beq	$t0, 5, imprimirSeparador
+    		beq	$t0, 7, imprimirNovaLinha
+    		beq	$t0, 9, imprimirSeparador
     		beq	$t0, 11, imprimirNovaLinha
-    		beq	$t0, 14, imprimirSeparador
-    		beq	$t0, 17, imprimirNovaLinha
-    		beq	$t0, 20, imprimirSeparador
-    		beq	$t0, 23, imprimirNovaLinha
-    		beq	$t0, 26, imprimirSeparador
-    		beq	$t0, 29, imprimirNovaLinha
-    		beq	$t0, 32, imprimirSeparador
-    		beq	$t0, 35, imprimirNovaLinha
+    		beq	$t0, 13, imprimirSeparador
+    		beq	$t0, 15, imprimirNovaLinha
     		j	imprimirEspaco
     	
     	imprimirNovaLinha:
@@ -214,18 +201,64 @@ imprimirTabuleiro:
 		li	$t0, 0
 		jr	$ra
 
+# Funções de verificação da lógica do sudoku
 
+verificaNum:
+	beq	$a0, 1, exit
+	beq	$a0, 3, exit
+	beq	$a0, 4, exit
+	j	continue
+
+
+verificaNum2:
+	beq	$a0, 1, exit
+	beq	$a0, 3, exit
+	beq 	$a0, 2, exit
+	j 	continue
+
+
+verificaNum3:
+	beq	$a0, 1, exit
+	beq	$a0, 2, exit
+	beq	$a0, 4, exit
+	j 	continue
+	
+	
+verificaNum4:
+	beq	$a0, 1, exit
+	beq	$a0, 3, exit
+	beq	$a0, 4, exit
+	j 	continue
+	
+	
 fimDeJogo:
+	# Imprimindo o tabuleiro no fim do jogo
 	li	$v0, 0
 	la	$t1, tabuleiro
 
     	li      $v0, 4
     	la      $a0, separador_vertical
     	syscall
-
+    	
 	jal 	imprimirTabuleiro
-	j 	exit
+	
+	# Caixa de popup com a mensagem de vitória
+	li 	$v0, 55
+	la	$a0, mensagemVitoria
+	la 	$a1, 3
+	syscall
+	
+	# Chamada de fim do programa
+	li 	$v0, 10
+	syscall
+
 
 exit:
-	li 	$v0, 10 # Definindo fim do programa
+	# Caixa de popup com a mensagem de derrota
+	li 	$v0, 55
+	la	$a0, mensagemDerrota
+	syscall
+	
+	# Chamada de fim do programa
+	li 	$v0, 10
 	syscall

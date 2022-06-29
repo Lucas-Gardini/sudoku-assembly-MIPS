@@ -1,5 +1,5 @@
 # sudoku-assembly-MIPS
 
-## Status: EM PROGRESSO
+## Status: FINALIZADO
 
-Projeto incompleto
+Projeto feito como trabalho do curso de ADS, se trata de um jogo de sudoku com tabuleiro 2x2 extremamente simples
